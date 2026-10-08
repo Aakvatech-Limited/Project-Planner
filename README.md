@@ -1,12 +1,12 @@
 # Project Planner
 
-Project Planner is an ERPNext/Frappe v15 enhancement layer for users who are familiar with basic Microsoft Project planning workflows.
+Project Planner is an ERPNext/Frappe v15/v16 enhancement layer for users who are familiar with basic Microsoft Project planning workflows.
 
 It **does not replace** ERPNext's standard `Project`, `Task`, or `Task Depends On` DocTypes. Those remain the system of record.
 
 ## First PR scope
 
-- Frappe app scaffold for ERPNext/Frappe v15.
+- Frappe app scaffold for ERPNext/Frappe v15 and v16.
 - Idempotent migrate patch containing the supplied Custom Field and Property Setter exports.
 - Project Number added to the standard Project Link search fields.
 - `Project Planner Settings` single DocType.
