@@ -47,17 +47,28 @@ bench --site <site> install-app project_planner
 bench --site <site> migrate
 ```
 
-## Build the Frappe-UI frontend
+A root `package.json` exposes the frontend build to Bench. The app's `after_install`
+hook additionally builds the frontend if the compiled bundle is missing, including when
+the app is installed before Bench runs its normal asset build. Node.js and npm must be
+available on the bench host. Installation fails with the actual npm error if compilation
+fails; it does not silently leave a broken frontend.
+
+## Frontend builds on upgrade
+
+The deployment process should run `bench build --app project_planner` after updating
+the app. The root build script installs frontend dependencies and invokes Vite.
+A normal `bench --site <site> migrate` does not compile frontend assets.
+
+To build manually for troubleshooting:
 
 ```bash
-cd apps/Project-Planner/frontend
-yarn install
-yarn build
+cd apps/project_planner
+npm run build
 cd ../..
 bench build --app project_planner
 ```
 
-The build writes the frontend bundle into `project_planner/public/frontend`. Open **Project Planner** from Desk after the assets are built.
+The bundle is written to `project_planner/public/frontend`. Open **Project Planner** from Desk after assets are available.
 
 ## Development direction
 
