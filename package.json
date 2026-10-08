@@ -1,0 +1,8 @@
+{
+  "name": "project-planner",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "build": "npm --prefix frontend install --no-audit --no-fund && npm --prefix frontend run build"
+  }
+}
