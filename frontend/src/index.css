@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#project-planner-root {
+	min-height: 70vh;
+}
+
+.project-planner-grid {
+	border: 1px solid var(--gray-200, #e5e7eb);
+	border-radius: 8px;
+	overflow: auto;
+	background: white;
+}
+
+.project-planner-grid table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.project-planner-grid th,
+.project-planner-grid td {
+	border-bottom: 1px solid var(--gray-200, #e5e7eb);
+	padding: 7px 8px;
+	white-space: nowrap;
+	text-align: left;
+}
+
+.project-planner-grid th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--gray-50, #f9fafb);
+	font-weight: 600;
+}
+
+.project-planner-grid tr.is-selected td {
+	background: var(--blue-50, #eff6ff);
+}
