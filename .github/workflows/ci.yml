@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+      - version-15-hotfix
+      - version-16-hotfix
 
 jobs:
   syntax-and-frontend:
@@ -34,10 +36,10 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm install
-
-      - name: Build Frappe UI frontend
-        working-directory: frontend
+      - name: Build frontend from root (Bench entrypoint)
         run: npm run build
+
+      - name: Verify frontend output
+        run: |
+          test -s project_planner/public/frontend/project-planner.js
+          test -s project_planner/public/frontend/project-planner.css
