@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  syntax-and-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile Python
+        run: python -m compileall project_planner
+
+      - name: Validate JSON
+        run: |
+          python -m json.tool project_planner/project_planner/doctype/project_planner_settings/project_planner_settings.json >/dev/null
+          python -m json.tool project_planner/project_planner/page/project_planner/project_planner.json >/dev/null
+          for file in project_planner/patches/v0_0/data/*.json; do
+            python -m json.tool "$file" >/dev/null
+          done
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build Frappe UI frontend
+        working-directory: frontend
+        run: npm run build
