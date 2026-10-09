@@ -1,9 +1,10 @@
 import { createApp } from "vue";
-import { FrappeUI, frappeRequest, setConfig } from "frappe-ui";
+import { FrappeUI, setConfig } from "frappe-ui";
+import { deskResourceFetcher } from "./deskApi";
 import App from "./App.vue";
 import "./index.css";
 
-setConfig("resourceFetcher", frappeRequest);
+setConfig("resourceFetcher", deskResourceFetcher);
 
 export function mount(element) {
 	const app = createApp(App);
@@ -12,8 +13,6 @@ export function mount(element) {
 	return app;
 }
 
-// Frappe Desk loads this IIFE asynchronously. Publish the mount API explicitly
-// instead of relying solely on the bundler's inferred global export.
 if (typeof window !== "undefined") {
 	window.ProjectPlanner = { mount };
 }
