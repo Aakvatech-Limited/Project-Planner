@@ -12,7 +12,7 @@ def _missing_frontend_assets(app_root):
 	output = app_root / "project_planner" / "public" / "frontend"
 	return [
 		filename
-		for filename in ("project-planner.js", "project-planner.css")
+		for filename in ("project-planner.js", "style.css")
 		if not (output / filename).is_file() or (output / filename).stat().st_size == 0
 	]
 
