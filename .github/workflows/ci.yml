@@ -23,6 +23,9 @@ jobs:
       - name: Compile Python
         run: python -m compileall project_planner
 
+      - name: Test frontend installation and migration fallback
+        run: python -m unittest discover -s tests -p 'test_*.py'
+
       - name: Validate JSON
         run: |
           python -m json.tool project_planner/project_planner/doctype/project_planner_settings/project_planner_settings.json >/dev/null
