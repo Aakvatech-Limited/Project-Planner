@@ -45,4 +45,4 @@ jobs:
       - name: Verify frontend output
         run: |
           test -s project_planner/public/frontend/project-planner.js
-          test -s project_planner/public/frontend/project-planner.css
+          test -s project_planner/public/frontend/style.css
