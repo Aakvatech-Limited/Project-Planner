@@ -15,7 +15,7 @@ class FrontendAssetTests(unittest.TestCase):
 			output = root / "project_planner" / "public" / "frontend"
 			output.mkdir(parents=True)
 			(output / "project-planner.js").write_text("js")
-			(output / "project-planner.css").write_text("css")
+			(output / "style.css").write_text("css")
 			self.assertEqual(install._missing_frontend_assets(root), [])
 
 	def test_missing_or_empty_assets(self):
@@ -24,8 +24,8 @@ class FrontendAssetTests(unittest.TestCase):
 			output = root / "project_planner" / "public" / "frontend"
 			output.mkdir(parents=True)
 			(output / "project-planner.js").write_text("js")
-			(output / "project-planner.css").touch()
-			self.assertEqual(install._missing_frontend_assets(root), ["project-planner.css"])
+			(output / "style.css").touch()
+			self.assertEqual(install._missing_frontend_assets(root), ["style.css"])
 
 	def test_existing_assets_skip_build(self):
 		root = Path(install.__file__).resolve().parent.parent
@@ -47,10 +47,10 @@ class FrontendAssetTests(unittest.TestCase):
 	def test_missing_after_build_fails(self):
 		with patch.object(
 			install, "_missing_frontend_assets",
-			side_effect=[["project-planner.css"], ["project-planner.css"]],
+			side_effect=[["style.css"], ["style.css"]],
 		):
 			with patch.object(install.subprocess, "run"):
-				with self.assertRaisesRegex(RuntimeError, "project-planner.css"):
+				with self.assertRaisesRegex(RuntimeError, "style.css"):
 					install.ensure_frontend_assets()
 
 
