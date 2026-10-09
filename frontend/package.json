@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && tailwindcss -i ./src/index.css -o ../project_planner/public/frontend/project-planner.css --minify"
+    "build": "vite build"
   },
   "dependencies": {
     "frappe-ui": "1.0.0",
