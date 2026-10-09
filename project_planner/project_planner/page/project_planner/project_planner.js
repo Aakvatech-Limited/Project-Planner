@@ -19,7 +19,7 @@ frappe.pages["project-planner"].on_page_load = function (wrapper) {
 
 	frappe.require(
 		[
-			"/assets/project_planner/frontend/project-planner.css",
+			"/assets/project_planner/frontend/style.css",
 			"/assets/project_planner/frontend/project-planner.js",
 		],
 		load_app
