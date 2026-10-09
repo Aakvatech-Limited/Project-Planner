@@ -6,6 +6,11 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
 	plugins: [vue()],
+	// Vue/frappe-ui includes CommonJS-style NODE_ENV checks. Vite's IIFE library
+	// output must replace these at compile time: browsers have no global process.
+	define: {
+		"process.env.NODE_ENV": JSON.stringify("production"),
+	},
 	build: {
 		outDir: fileURLToPath(new URL("../project_planner/public/frontend", import.meta.url)),
 		emptyOutDir: true,
