@@ -7,6 +7,10 @@ app_license = "MIT"
 
 required_apps = ["erpnext"]
 
+# A fresh site installation can precede the bench's asset build. Build only
+# when the frontend entry bundle is missing; normal upgrades use bench build.
+after_install = "project_planner.install.ensure_frontend_assets"
+
 add_to_apps_screen = [
 	{
 		"name": "project_planner",
