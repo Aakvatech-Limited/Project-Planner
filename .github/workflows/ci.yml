@@ -46,3 +46,10 @@ jobs:
         run: |
           test -s project_planner/public/frontend/project-planner.js
           test -s project_planner/public/frontend/style.css
+
+      - name: Reject Node environment references in browser bundle
+        run: |
+          if grep -Fq 'process.env.NODE_ENV' project_planner/public/frontend/project-planner.js; then
+            echo 'Browser bundle contains unresolved process.env.NODE_ENV references' >&2
+            exit 1
+          fi
