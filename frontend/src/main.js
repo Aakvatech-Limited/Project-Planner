@@ -11,3 +11,9 @@ export function mount(element) {
 	app.mount(element);
 	return app;
 }
+
+// Frappe Desk loads this IIFE asynchronously. Publish the mount API explicitly
+// instead of relying solely on the bundler's inferred global export.
+if (typeof window !== "undefined") {
+	window.ProjectPlanner = { mount };
+}
