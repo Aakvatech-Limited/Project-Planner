@@ -7,10 +7,10 @@
 }
 
 .project-planner-grid {
-	border: 1px solid var(--gray-200, #e5e7eb);
+	border: 1px solid var(--border-color);
 	border-radius: 8px;
 	overflow: auto;
-	background: white;
+	background: var(--card-bg);
 }
 
 .project-planner-grid table {
@@ -30,10 +30,15 @@
 	position: sticky;
 	top: 0;
 	z-index: 2;
-	background: var(--gray-50, #f9fafb);
+	background: var(--fg-color);
 	font-weight: 600;
 }
 
 .project-planner-grid tr.is-selected td {
-	background: var(--blue-50, #eff6ff);
+	background: var(--control-bg);
 }
+
+/* Frappe Desk provides light/dark values for these semantic tokens. */
+#project-planner-root { color: var(--text-color); }
+.project-planner-toolbar { background: var(--card-bg); border-color: var(--border-color); }
+.project-planner-grid th { color: var(--text-color); }
