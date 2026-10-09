@@ -9,8 +9,14 @@ required_apps = ["erpnext"]
 
 # Asset output is shared across sites on a bench. The helper checks for
 # missing/empty assets before invoking npm, including on older installations.
-after_install = "project_planner.install.ensure_frontend_assets"
-after_migrate = "project_planner.install.ensure_frontend_assets"
+after_install = [
+	"project_planner.custom_fields.execute",
+	"project_planner.install.ensure_frontend_assets",
+]
+after_migrate = [
+	"project_planner.custom_fields.execute",
+	"project_planner.install.ensure_frontend_assets",
+]
 
 add_to_apps_screen = [
 	{
