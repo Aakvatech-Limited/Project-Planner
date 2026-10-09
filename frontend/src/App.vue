@@ -1,6 +1,6 @@
 <template>
 	<div class="flex h-full flex-col gap-3 p-3">
-		<div class="flex flex-wrap items-end gap-2 rounded-lg border bg-white p-3">
+		<div class="project-planner-toolbar flex flex-wrap items-end gap-2 rounded-lg border p-3">
 			<div class="w-[420px] max-w-full">
 				<div class="mb-1 text-sm font-medium text-ink-gray-8">Project</div>
 				<ProjectLink v-model="project" />
@@ -148,7 +148,8 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
-import { Badge, Button, Checkbox, FormControl, call, toast } from "frappe-ui";
+import { Badge, Button, Checkbox, FormControl, toast } from "frappe-ui";
+import { deskCall } from "./deskApi";
 import ProjectLink from "./components/ProjectLink.vue";
 
 const project = ref("");
@@ -218,7 +219,7 @@ async function loadPlan() {
 
 	loading.value = true;
 	try {
-		const data = await call("project_planner.api.get_project_plan", {
+		const data = await deskCall("project_planner.api.get_project_plan", {
 			project: project.value,
 		});
 		projectData.value = data.project;
@@ -259,7 +260,7 @@ async function linkSelected() {
 	busy.value = true;
 
 	try {
-		const result = await call("project_planner.api.link_tasks", {
+		const result = await deskCall("project_planner.api.link_tasks", {
 			project: project.value,
 			tasks: selectedTasks.value.map((task) => task.name),
 			dependency_type: dependencyType.value,
@@ -282,7 +283,7 @@ async function unlinkSelected() {
 	busy.value = true;
 
 	try {
-		const result = await call("project_planner.api.unlink_tasks", {
+		const result = await deskCall("project_planner.api.unlink_tasks", {
 			project: project.value,
 			tasks: selectedTasks.value.map((task) => task.name),
 		});
