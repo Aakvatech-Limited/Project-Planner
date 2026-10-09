@@ -7,9 +7,10 @@ app_license = "MIT"
 
 required_apps = ["erpnext"]
 
-# A fresh site installation can precede the bench's asset build. Build only
-# when the frontend entry bundle is missing; normal upgrades use bench build.
+# Asset output is shared across sites on a bench. The helper checks for
+# missing/empty assets before invoking npm, including on older installations.
 after_install = "project_planner.install.ensure_frontend_assets"
+after_migrate = "project_planner.install.ensure_frontend_assets"
 
 add_to_apps_screen = [
 	{

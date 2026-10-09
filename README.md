@@ -56,8 +56,14 @@ fails; it does not silently leave a broken frontend.
 ## Frontend builds on upgrade
 
 The deployment process should run `bench build --app project_planner` after updating
-the app. The root build script installs frontend dependencies and invokes Vite.
-A normal `bench --site <site> migrate` does not compile frontend assets.
+the app, especially when frontend source files have changed. The root build script
+installs frontend dependencies and invokes Vite.
+
+The `after_migrate` hook also checks for missing or empty `project-planner.js` and
+`project-planner.css`. If either is absent, it builds the frontend automatically,
+repairing older installations on their next migration. If both exist, migration
+skips the build. The output directory is shared across sites on the same bench;
+this check does **not** detect stale but existing bundles after a source update.
 
 To build manually for troubleshooting:
 
