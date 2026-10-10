@@ -50,8 +50,6 @@
 	flex-shrink: 0;
 }
 .project-planner-toolbar .planner-link {
-	color: var(--neutral, #fff);
-	background: var(--primary);
 	min-width: 60px;
 	flex-shrink: 0;
 }
