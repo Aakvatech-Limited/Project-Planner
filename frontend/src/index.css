@@ -55,3 +55,19 @@
 }
 .project-planner-grid th,
 .project-planner-grid td { border-color: var(--border-color); }
+
+.project-planner-grid { min-width: 0; }
+.project-planner-grid .planner-relations {
+	min-width: 180px;
+	max-width: 260px;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+.planner-task-link { color: var(--text-color); text-decoration: underline; }
+.planner-task-link:hover { color: var(--primary-color, var(--text-color)); }
+.planner-action-result, .planner-scheduling-notice {
+	background: var(--control-bg);
+	border-color: var(--border-color);
+}
+.planner-action-result.is-error { border-color: var(--red-500); }
+.planner-action-result ul { padding-left: 20px; list-style: disc; }

@@ -44,7 +44,8 @@ class PlannerAPITests(unittest.TestCase):
 
 	def test_link_chain_stores_predecessors_on_successors(self):
 		result = self.api.link_tasks("P", ["A", "B", "C"], lag_days=2)
-		self.assertEqual(result, {"created": 2, "skipped": 0})
+		self.assertEqual((result["created"], result["skipped"]), (2, 0))
+		self.assertEqual([row["status"] for row in result["details"]], ["created", "created"])
 		self.assertEqual(self.docs["A"].depends_on, [])
 		self.assertEqual(self.docs["B"].depends_on[0].task, "A")
 		self.assertEqual(self.docs["C"].depends_on[0].task, "B")
@@ -52,17 +53,21 @@ class PlannerAPITests(unittest.TestCase):
 
 	def test_link_is_idempotent(self):
 		self.api.link_tasks("P", ["A", "B"])
-		self.assertEqual(self.api.link_tasks("P", ["A", "B"]), {"created": 0, "skipped": 1})
+		result = self.api.link_tasks("P", ["A", "B"])
+		self.assertEqual((result["created"], result["skipped"]), (0, 1))
+		self.assertEqual(result["details"], [{"predecessor": "A", "successor": "B", "status": "existing"}])
 
 	def test_unlink_preserves_other_predecessors(self):
 		self.docs["B"] = Task("B", ["A", "C"])
-		self.assertEqual(self.api.unlink_tasks("P", ["A", "B"]), {"removed": 1})
+		result = self.api.unlink_tasks("P", ["A", "B"])
+		self.assertEqual(result["removed"], 1)
+		self.assertEqual(result["details"], [{"predecessor": "A", "successor": "B", "status": "removed"}])
 		self.assertEqual([row.task for row in self.docs["B"].depends_on], ["C"])
 
 	def test_unlink_removes_nonadjacent_and_reverse_edges(self):
 		self.docs["A"] = Task("A", ["C"])
 		self.docs["C"] = Task("C", ["B", "EXTERNAL"])
-		self.assertEqual(self.api.unlink_tasks("P", ["C", "A", "B"]), {"removed": 2})
+		self.assertEqual(self.api.unlink_tasks("P", ["C", "A", "B"])["removed"], 2)
 		self.assertEqual(self.docs["A"].depends_on, [])
 		self.assertEqual([row.task for row in self.docs["C"].depends_on], ["EXTERNAL"])
 
@@ -73,6 +78,9 @@ class PlannerAPITests(unittest.TestCase):
 		with self.assertRaises(PermissionError):
 			self.api.unlink_tasks("P", ["A", "B", "C"])
 		self.docs["B"].save.assert_not_called()
+
+	def test_unlink_reports_no_existing_dependencies(self):
+		self.assertEqual(self.api.unlink_tasks("P", ["A", "B"]), {"removed": 0, "details": []})
 
 	def test_duration_updates_finish_and_saves(self):
 		self.docs["A"].exp_start_date = "2026-10-10"
