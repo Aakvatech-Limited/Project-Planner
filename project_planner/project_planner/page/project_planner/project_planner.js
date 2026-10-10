@@ -1,6 +1,7 @@
 // Load Project Planner's Vite assets with explicit error handling. Frappe's
 // require() intentionally resolves even when a script or stylesheet returns 404.
 frappe.pages["project-planner"].on_page_load = function (wrapper) {
+	$(wrapper).addClass("project-planner-desk-page");
 	const page = frappe.ui.make_app_page({
 		parent: wrapper,
 		title: __("Project Planner"),
