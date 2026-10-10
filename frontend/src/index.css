@@ -3,18 +3,25 @@
 @tailwind utilities;
 
 #project-planner-root {
-	min-height: 70vh;
+	width: 100%;
+	min-width: 0;
 }
 
 .project-planner-grid {
 	border: 1px solid var(--border-color);
 	border-radius: 8px;
-	overflow: auto;
+	overflow: scroll;
+	scrollbar-gutter: stable;
+	overscroll-behavior: contain;
+	min-height: 0;
+	min-width: 0;
+	flex: 1 1 0;
 	background: var(--card-bg);
 }
 
 .project-planner-grid table {
-	width: 100%;
+	width: max-content;
+	min-width: 100%;
 	border-collapse: collapse;
 }
 
@@ -71,3 +78,47 @@
 }
 .planner-action-result.is-error { border-color: var(--red-500); }
 .planner-action-result ul { padding-left: 20px; list-style: disc; }
+
+/* Fill the current Desk page only; leave other pages and the Dock intact. */
+.project-planner-desk-page .container,
+.project-planner-desk-page .page-body {
+	width: 100%;
+	max-width: none;
+}
+.project-planner-desk-page .layout-main-section-wrapper {
+	width: 100%;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+.project-planner-desk-page .layout-main-section {
+	width: 100%;
+	min-width: 0;
+	padding: 0;
+}
+.project-planner-shell {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+	min-width: 0;
+	min-height: 0;
+	padding: 8px;
+	box-sizing: border-box;
+	overflow: hidden;
+}
+.project-planner-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-height: 0;
+	max-height: 45%;
+	flex: 0 1 auto;
+	overflow-y: auto;
+	overflow-x: hidden;
+	scrollbar-gutter: stable;
+}
+.project-planner-controls > * { flex-shrink: 0; }
+.project-planner-grid:focus-visible {
+	outline: 2px solid var(--border-primary, var(--text-color));
+	outline-offset: -2px;
+}

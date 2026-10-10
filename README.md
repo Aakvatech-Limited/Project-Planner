@@ -49,6 +49,8 @@ Task names and dependency references open the native Task form in a new tab. **P
 
 Saving dependencies runs ERPNext Task validation and scheduling hooks and can change dates/times. Existing links remain unchanged; unlinking does not restore previous dates. The planner reports actual detected schedule changes, including zero changes.
 
+The planner fills the available Desk page width. The task grid has its own horizontal and vertical scrollbars and sticky column headers within the remaining viewport height. Controls and long result panels scroll separately. Focus the grid to scroll with the keyboard.
+
 ### Editing the grid
 
 - Change **Duration (days)** directly in a row. Duration is a non-negative whole number; where a start date exists, finish is start plus duration minus one day (zero stays on the start date). Standard Task validation and scheduling hooks run on save.

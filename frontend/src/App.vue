@@ -1,5 +1,6 @@
 <template>
-	<div class="flex h-full flex-col gap-3 p-3">
+	<div ref="plannerElement" class="project-planner-shell" :style="{ height: plannerHeight + 'px' }">
+		<div class="project-planner-controls">
 		<div class="project-planner-toolbar flex flex-wrap items-end gap-2 rounded-lg border p-3">
 			<div class="w-[420px] max-w-full">
 				<div class="mb-1 text-sm font-medium text-ink-gray-8">Project</div>
@@ -97,7 +98,9 @@
 			</span>
 		</div>
 
-		<div class="project-planner-grid min-h-[420px] flex-1">
+		</div>
+
+		<div class="project-planner-grid" tabindex="0" role="region" aria-label="Project task grid">
 			<div v-if="loading" class="p-10 text-center text-ink-gray-5">Loading project plan…</div>
 			<div v-else-if="!project" class="p-10 text-center text-ink-gray-5">
 				Select a project to begin planning.
@@ -196,6 +199,10 @@ import { computed, reactive, ref, watch } from "vue";
 import { Badge, Button, Checkbox, FormControl } from "frappe-ui";
 import { deskCall } from "./deskApi";
 import ProjectLink from "./components/ProjectLink.vue";
+import { usePlannerViewport } from "./usePlannerViewport";
+
+const plannerElement = ref(null);
+const plannerHeight = usePlannerViewport(plannerElement);
 
 const project = ref("");
 const projectData = ref(null);
