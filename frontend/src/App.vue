@@ -15,8 +15,9 @@
 
 			<div class="mx-1 hidden h-8 w-px bg-outline-gray-2 md:block" />
 
+			<div class="planner-dependency-actions flex w-full flex-wrap items-end gap-2">
 			<button class="btn btn-primary btn-sm planner-link" :disabled="selectedTasks.length < 2 || busy || loading" @click="linkSelected">Link</button>
-			<button class="btn btn-default btn-sm" :disabled="selectedTasks.length < 2 || busy || loading" @click="unlinkSelected">Unlink</button>
+			<button class="btn btn-default btn-sm planner-unlink" :disabled="selectedTasks.length < 2 || busy || loading" @click="unlinkSelected">Unlink</button>
 			<Button label="Add Row" :disabled="!project || busy || loading" @click="insertRow()" />
 			<Button label="Insert Row" :disabled="selectedTasks.length !== 1 || busy || loading" @click="insertRow(selectedTasks[0])" />
 			<Button label="Delete Rows" :disabled="!selectedTasks.length || busy || loading" @click="deleteRows" />
@@ -36,6 +37,8 @@
 					type="number"
 					label="Lag / Lead"
 				/>
+			</div>
+
 			</div>
 
 			<div class="ml-auto flex items-center gap-2">
@@ -62,6 +65,11 @@
 				{{ projectData.expected_end_date || "No finish" }}
 			</span>
 		</div>
+
+		<p class="px-1 text-sm text-ink-gray-6" role="status">
+			Select at least two task checkboxes. Link creates a chain in grid order;
+			Unlink removes existing dependencies between the selected tasks, in either direction.
+		</p>
 
 		<div v-if="selectedTasks.length" class="rounded-md border bg-surface-gray-1 px-3 py-2 text-sm">
 			<span class="font-medium">Link sequence (grid order):</span>

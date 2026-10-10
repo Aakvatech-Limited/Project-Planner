@@ -122,14 +122,21 @@ def unlink_tasks(project: str, tasks):
 
 	removed = 0
 
-	for predecessor_name, successor_name in zip(task_names, task_names[1:]):
-		successor = frappe.get_doc("Task", successor_name)
-		frappe.has_permission("Task", "write", doc=successor, throw=True)
-		before = len(successor.depends_on)
-		successor.set("depends_on", [row for row in successor.depends_on if row.task != predecessor_name])
-		if len(successor.depends_on) != before:
-			successor.save()
-			removed += 1
+	# Remove existing edges among selected tasks, regardless of display order.
+	# This also permits unlinking rows created using the old successor convention.
+	selected = set(task_names)
+	docs = [frappe.get_doc("Task", name) for name in task_names]
+	changes = [
+		(doc, [row for row in doc.depends_on if row.task not in selected])
+		for doc in docs
+		if any(row.task in selected for row in doc.depends_on)
+	]
+	for doc, rows in changes:
+		doc.check_permission("write")
+	for doc, rows in changes:
+		removed += len(doc.depends_on) - len(rows)
+		doc.set("depends_on", rows)
+		doc.save()
 
 	return {"removed": removed}
 
