@@ -10,7 +10,8 @@ It is intended for project managers and delivery teams who need to organize task
 - Project selection through the standard Project Link search.
 - Task hierarchy grid with multi-selection and Link / Unlink / Refresh actions.
 - Four dependency relationships: Finish-to-Start (FS), Start-to-Start (SS), Finish-to-Finish (FF), and Start-to-Finish (SF).
-- Lead and lag inputs and visible successor relationships.
+- Lead and lag inputs and visible predecessor relationships.
+- Editable duration in days, saved row sequence within sibling tasks, and task insertion/deletion through Desk dialogs.
 - Project Planner Settings for app-level configuration.
 - Whitelisted planning APIs operating on ERPNext Project and Task records.
 
@@ -40,15 +41,18 @@ The exact scheduling side effects depend on the installed app revision and ERPNe
 
 ## Important dependency convention
 
-**Project Planner intentionally interprets entries in `Task.depends_on` as successors.**
+ERPNext treats `Task.depends_on` as predecessors. Selecting A, B, C in grid order and clicking **Link** stores A in B's `depends_on`, and B in C's `depends_on`. **Unlink** removes those same adjacent relationships. Selection stays active after saving.
 
-```text
-Task A.depends_on -> Task B
+Existing links created by older planner revisions may be reversed. Review them in the Task form; this upgrade does not automatically reverse existing data because native ERPNext links may already use the correct convention. Any site-specific scheduling scripts that treated dependencies as successors must also be revised separately.
 
-Task A (predecessor) -> Task B (successor)
-```
+### Editing the grid
 
-This differs from the predecessor interpretation used by some native ERPNext Task controller methods. Integrations, scripts, and reports that read `depends_on` must respect this convention. Test scheduling and circular-dependency handling against the specific deployed version.
+- Change **Duration (days)** directly in a row. Duration is a non-negative whole number; where a start date exists, finish is start plus duration minus one day (zero stays on the start date). Standard Task validation and scheduling hooks run on save.
+- Use **↑ / ↓** to move tasks within the same parent. The saved planner sequence changes display/link order without changing hierarchy or dependencies.
+- Use **Add Row** to append a root task, or select one task and use **Insert Row** to insert a sibling before it. Enter the name and duration in the standard Desk dialog.
+- Select tasks and choose **Delete Rows**, then confirm. Standard ERPNext permissions, child-task restrictions, and link checks apply. Referenced tasks must be unlinked before deletion.
+
+Dependency type and lag/lead are stored on each relationship. Their scheduling effect depends on installed scheduling hooks; the native ERPNext scheduler does not implement all four types and lag/lead options.
 
 ## Compatibility and prerequisites
 
@@ -127,7 +131,7 @@ The app also calls `project_planner.custom_fields.execute` from `after_install` 
 | `process is not defined` in browser | Frontend bundle and build-time environment substitutions |
 | Project search returns no results | User permissions, Project Link search, network response |
 | Dependency type field is missing | Custom Field records, customization loader, install/migrate logs |
-| Dates do not propagate as expected | Successor convention, Task controller behavior, scheduling execution |
+| Dates do not propagate as expected | Predecessor convention, Task controller behavior, scheduling execution |
 | Changes appear absent after upgrade | Stale frontend assets and browser/Desk cache |
 
 ## Technical architecture
@@ -140,7 +144,7 @@ The app also calls `project_planner.custom_fields.execute` from `after_install` 
 
 ## Roadmap
 
-Potential future enhancements include indent/outdent, task creation/deletion, milestones, baselines, zoom controls, and a synchronized Gantt pane. These are **roadmap ideas**, not guaranteed current features.
+Potential future enhancements include indent/outdent, milestones, baselines, zoom controls, and a synchronized Gantt pane. These are **roadmap ideas**, not guaranteed current features.
 
 ## Security and operational considerations
 
