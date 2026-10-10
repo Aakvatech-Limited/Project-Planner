@@ -82,6 +82,7 @@ def link_tasks(project: str, tasks, dependency_type="FS (Finish-to-Start)", lag_
 
 	created = 0
 	skipped = 0
+	details = []
 
 	for predecessor_name, successor_name in zip(task_names, task_names[1:]):
 		if predecessor_name == successor_name:
@@ -94,6 +95,7 @@ def link_tasks(project: str, tasks, dependency_type="FS (Finish-to-Start)", lag_
 		existing = next((row for row in successor.depends_on if row.task == predecessor_name), None)
 		if existing:
 			skipped += 1
+			details.append({"predecessor": predecessor_name, "successor": successor_name, "status": "existing"})
 			continue
 
 		successor.append(
@@ -108,8 +110,9 @@ def link_tasks(project: str, tasks, dependency_type="FS (Finish-to-Start)", lag_
 		)
 		successor.save()
 		created += 1
+		details.append({"predecessor": predecessor_name, "successor": successor_name, "status": "created"})
 
-	return {"created": created, "skipped": skipped}
+	return {"created": created, "skipped": skipped, "details": details}
 
 
 @frappe.whitelist()
@@ -121,6 +124,7 @@ def unlink_tasks(project: str, tasks):
 	_validate_project_tasks(project, task_names)
 
 	removed = 0
+	details = []
 
 	# Remove existing edges among selected tasks, regardless of display order.
 	# This also permits unlinking rows created using the old successor convention.
@@ -134,11 +138,12 @@ def unlink_tasks(project: str, tasks):
 	for doc, rows in changes:
 		doc.check_permission("write")
 	for doc, rows in changes:
+		details.extend({"predecessor": row.task, "successor": doc.name, "status": "removed"} for row in doc.depends_on if row.task in selected)
 		removed += len(doc.depends_on) - len(rows)
 		doc.set("depends_on", rows)
 		doc.save()
 
-	return {"removed": removed}
+	return {"removed": removed, "details": details}
 
 
 def _parse_task_names(tasks):
