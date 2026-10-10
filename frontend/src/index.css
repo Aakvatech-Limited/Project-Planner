@@ -42,3 +42,18 @@
 #project-planner-root { color: var(--text-color); }
 .project-planner-toolbar { background: var(--card-bg); border-color: var(--border-color); }
 .project-planner-grid th { color: var(--text-color); }
+
+.project-planner-toolbar {
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	flex-shrink: 0;
+}
+.project-planner-toolbar .planner-link {
+	color: var(--neutral, #fff);
+	background: var(--primary);
+	min-width: 60px;
+	flex-shrink: 0;
+}
+.project-planner-grid th,
+.project-planner-grid td { border-color: var(--border-color); }

@@ -3,6 +3,7 @@
 		v-model="value"
 		v-model:query="query"
 		:options="options"
+		:disabled="disabled"
 		:loading="resource.loading"
 		:filterable="false"
 		placeholder="Select Project"
@@ -16,6 +17,7 @@ import { Combobox, createResource } from "frappe-ui";
 
 const props = defineProps({
 	modelValue: { type: String, default: "" },
+	disabled: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["update:modelValue"]);
