@@ -3,30 +3,23 @@
 		<div class="project-planner-toolbar flex flex-wrap items-end gap-2 rounded-lg border p-3">
 			<div class="w-[420px] max-w-full">
 				<div class="mb-1 text-sm font-medium text-ink-gray-8">Project</div>
-				<ProjectLink v-model="project" />
+				<ProjectLink v-model="project" :disabled="busy || loading" />
 			</div>
 
 			<Button
 				label="Refresh"
 				variant="subtle"
 				:disabled="!project || loading"
-				@click="loadPlan"
+				@click="loadPlan()"
 			/>
 
 			<div class="mx-1 hidden h-8 w-px bg-outline-gray-2 md:block" />
 
-			<Button
-				label="Link"
-				variant="solid"
-				:disabled="selectedTasks.length < 2 || busy"
-				@click="linkSelected"
-			/>
-			<Button
-				label="Unlink"
-				variant="subtle"
-				:disabled="selectedTasks.length < 2 || busy"
-				@click="unlinkSelected"
-			/>
+			<button class="btn btn-primary btn-sm planner-link" :disabled="selectedTasks.length < 2 || busy || loading" @click="linkSelected">Link</button>
+			<button class="btn btn-default btn-sm" :disabled="selectedTasks.length < 2 || busy || loading" @click="unlinkSelected">Unlink</button>
+			<Button label="Add Row" :disabled="!project || busy || loading" @click="insertRow()" />
+			<Button label="Insert Row" :disabled="selectedTasks.length !== 1 || busy || loading" @click="insertRow(selectedTasks[0])" />
+			<Button label="Delete Rows" :disabled="!selectedTasks.length || busy || loading" @click="deleteRows" />
 
 			<div class="w-52">
 				<FormControl
@@ -71,7 +64,7 @@
 		</div>
 
 		<div v-if="selectedTasks.length" class="rounded-md border bg-surface-gray-1 px-3 py-2 text-sm">
-			<span class="font-medium">Link sequence:</span>
+			<span class="font-medium">Link sequence (grid order):</span>
 			<span v-for="(task, index) in selectedTasks" :key="task.name">
 				<span v-if="index" class="mx-2 text-ink-gray-5">→</span>
 				{{ task.subject || task.name }}
@@ -93,6 +86,9 @@
 						<th class="w-10">
 							<Checkbox
 								:model-value="allSelected"
+								:indeterminate="selectedTasks.length > 0 && !allSelected"
+								:disabled="busy || loading"
+								aria-label="Select all tasks"
 								@update:model-value="toggleAll"
 							/>
 						</th>
@@ -100,9 +96,10 @@
 						<th>Task Name</th>
 						<th>Start</th>
 						<th>Finish</th>
-						<th>Duration</th>
+						<th>Duration (days)</th>
 						<th>Status</th>
-						<th>Successors</th>
+						<th>Predecessors</th>
+						<th>Sequence</th>
 					</tr>
 				</thead>
 
@@ -115,6 +112,8 @@
 						<td>
 							<Checkbox
 								:model-value="Boolean(selected[entry.task.name])"
+								:disabled="busy || loading"
+								:aria-label="'Select ' + entry.task.subject"
 								@update:model-value="(value) => setSelected(entry.task.name, value)"
 							/>
 						</td>
@@ -132,12 +131,20 @@
 						</td>
 						<td>{{ entry.task.exp_start_date || "" }}</td>
 						<td>{{ entry.task.exp_end_date || "" }}</td>
-						<td>{{ entry.task.duration || "" }}</td>
+						<td class="w-32">
+							<FormControl type="number" :model-value="entry.task.duration ?? 0" min="0" step="1"
+								:disabled="busy || loading" :aria-label="'Duration for ' + entry.task.subject"
+								@change="(event) => saveDuration(entry.task, event.target.value)" />
+						</td>
 						<td>{{ entry.task.status || "" }}</td>
 						<td>
-							<span v-if="successorsFor(entry.task.name).length">
-								{{ successorsFor(entry.task.name).join(", ") }}
+							<span v-if="predecessorsFor(entry.task.name).length">
+								{{ predecessorsFor(entry.task.name).join(", ") }}
 							</span>
+						</td>
+						<td class="flex gap-1">
+							<Button label="↑" :aria-label="'Move ' + entry.task.subject + ' up'" :disabled="busy || loading || !canMove(entry.task, -1)" @click="moveRow(entry.task, -1)" />
+							<Button label="↓" :aria-label="'Move ' + entry.task.subject + ' down'" :disabled="busy || loading || !canMove(entry.task, 1)" @click="moveRow(entry.task, 1)" />
 						</td>
 					</tr>
 				</tbody>
@@ -214,7 +221,7 @@ watch(project, (value) => {
 	}
 });
 
-async function loadPlan() {
+async function loadPlan(preserveSelection = false) {
 	if (!project.value) return;
 
 	loading.value = true;
@@ -225,7 +232,11 @@ async function loadPlan() {
 		projectData.value = data.project;
 		tasks.value = data.tasks || [];
 		dependencies.value = data.dependencies || [];
-		clearSelection();
+		if (!preserveSelection) clearSelection();
+		else {
+			const known = new Set(tasks.value.map((task) => task.name));
+			for (const name of Object.keys(selected)) if (!known.has(name)) delete selected[name];
+		}
 	} catch (error) {
 		toast.error(error?.message || "Unable to load project plan");
 	} finally {
@@ -249,7 +260,7 @@ function clearSelection() {
 	for (const key of Object.keys(selected)) delete selected[key];
 }
 
-function successorsFor(taskName) {
+function predecessorsFor(taskName) {
 	return dependencies.value
 		.filter((row) => row.parent === taskName)
 		.map((row) => row.task);
@@ -270,7 +281,7 @@ async function linkSelected() {
 			`${result.created || 0} dependencies created` +
 				(result.skipped ? `; ${result.skipped} already existed` : "")
 		);
-		await loadPlan();
+		await loadPlan(true);
 	} catch (error) {
 		toast.error(error?.message || "Unable to link tasks");
 	} finally {
@@ -288,11 +299,81 @@ async function unlinkSelected() {
 			tasks: selectedTasks.value.map((task) => task.name),
 		});
 		toast.success(`${result.removed || 0} dependencies removed`);
-		await loadPlan();
+		await loadPlan(true);
 	} catch (error) {
 		toast.error(error?.message || "Unable to unlink tasks");
 	} finally {
 		busy.value = false;
 	}
 }
+
+async function mutate(method, args) {
+	busy.value = true;
+	try {
+		const result = await deskCall(`project_planner.api.${method}`, { project: project.value, ...args });
+		await loadPlan(true);
+		return result;
+	} catch (error) {
+		toast.error(error?.message || "Unable to save changes");
+		await loadPlan(true);
+	} finally {
+		busy.value = false;
+	}
+}
+
+async function saveDuration(task, value) {
+	if (Number(value) === Number(task.duration)) return;
+	await mutate("update_duration", { task: task.name, duration: value });
+}
+
+function siblings(task) {
+	return tasks.value.filter((row) => (row.parent_task || "") === (task.parent_task || ""));
+}
+
+function canMove(task, direction) {
+	const rows = siblings(task);
+	const index = rows.findIndex((row) => row.name === task.name) + direction;
+	return index >= 0 && index < rows.length;
+}
+
+async function moveRow(task, direction) {
+	if (!canMove(task, direction)) return;
+	const rows = [...tasks.value];
+	const group = siblings(task);
+	const index = group.findIndex((row) => row.name === task.name);
+	const other = group[index + direction];
+	const a = rows.findIndex((row) => row.name === task.name);
+	const b = rows.findIndex((row) => row.name === other.name);
+	[rows[a], rows[b]] = [rows[b], rows[a]];
+	await mutate("reorder_tasks", { tasks: rows.map((row) => row.name) });
+}
+
+function insertRow(beforeTask = null) {
+	const currentProject = project.value;
+	const dialog = new window.frappe.ui.Dialog({
+		title: beforeTask ? "Insert Task Before " + beforeTask.subject : "Add Task",
+		fields: [
+			{ fieldname: "subject", label: "Task Name", fieldtype: "Data", reqd: 1 },
+			{ fieldname: "duration", label: "Duration (days)", fieldtype: "Int", default: 1, reqd: 1 },
+		],
+		primary_action_label: "Insert",
+		async primary_action(values) {
+			if (currentProject !== project.value || busy.value) return;
+			const result = await mutate("insert_task", { ...values, before_task: beforeTask?.name });
+			if (!result) return;
+			dialog.hide();
+		},
+	});
+	dialog.show();
+}
+
+function deleteRows() {
+	const names = selectedTasks.value.map((task) => task.name);
+	const currentProject = project.value;
+	window.frappe.confirm(`Delete ${names.length} selected task(s)? ERPNext link checks apply.`, async () => {
+		if (currentProject !== project.value || busy.value) return;
+		await mutate("delete_tasks", { tasks: names });
+	});
+}
+
 </script>
