@@ -60,9 +60,9 @@
 				theme="gray"
 			/>
 			<span class="text-ink-gray-5">
-				{{ projectData.expected_start_date || "No start" }}
+				{{ displayDate(projectData.expected_start_date) || "No start" }}
 				→
-				{{ projectData.expected_end_date || "No finish" }}
+				{{ displayDate(projectData.expected_end_date) || "No finish" }}
 			</span>
 		</div>
 
@@ -70,6 +70,24 @@
 			Select at least two task checkboxes. Link creates a chain in grid order;
 			Unlink removes existing dependencies between the selected tasks, in either direction.
 		</p>
+
+		<div class="planner-scheduling-notice rounded-md border px-3 py-2 text-sm">
+			<strong>Dependencies affect scheduling.</strong>
+			Saving a dependency runs ERPNext Task validation and scheduling hooks, which can change task start/finish dates and times.
+			Existing links are left unchanged. Unlink does not restore previous dates.
+			Dependency type and lag/lead scheduling depends on the installed scheduling hooks.
+		</div>
+
+		<div v-if="actionResult" class="planner-action-result rounded-md border px-3 py-2 text-sm" :class="{ 'is-error': actionResult.error }" role="status" aria-live="polite">
+			<strong>{{ actionResult.message }}</strong>
+			<p v-if="actionResult.scheduleMessage">{{ actionResult.scheduleMessage }}</p>
+			<ul v-if="actionResult.details?.length">
+				<li v-for="(detail, index) in actionResult.details" :key="index">
+					{{ taskLabel(detail.predecessor) }} → {{ taskLabel(detail.successor) }}:
+					{{ detail.status === 'created' ? 'Linked' : detail.status === 'existing' ? 'Already linked; unchanged' : 'Unlinked' }}
+				</li>
+			</ul>
+		</div>
 
 		<div v-if="selectedTasks.length" class="rounded-md border bg-surface-gray-1 px-3 py-2 text-sm">
 			<span class="font-medium">Link sequence (grid order):</span>
@@ -102,11 +120,12 @@
 						</th>
 						<th class="w-14">#</th>
 						<th>Task Name</th>
+						<th class="planner-relations">Predecessors</th>
+						<th class="planner-relations">Successors</th>
 						<th>Start</th>
 						<th>Finish</th>
 						<th>Duration (days)</th>
 						<th>Status</th>
-						<th>Predecessors</th>
 						<th>Sequence</th>
 					</tr>
 				</thead>
@@ -132,24 +151,35 @@
 								:style="{ paddingLeft: entry.level * 18 + 'px' }"
 							>
 								<span v-if="entry.task.is_group" class="text-ink-gray-5">▸</span>
-								<strong v-if="entry.task.is_group">{{ entry.task.subject }}</strong>
-								<span v-else>{{ entry.task.subject }}</span>
+								<a class="planner-task-link" :href="taskUrl(entry.task.name)" target="_blank" rel="noopener noreferrer"
+									:class="{ 'font-semibold': entry.task.is_group }" :title="'Open ' + entry.task.name + ' in a new tab'">
+									{{ entry.task.subject || entry.task.name }}
+								</a>
 								<span class="ml-2 text-xs text-ink-gray-4">{{ entry.task.name }}</span>
 							</div>
 						</td>
-						<td>{{ entry.task.exp_start_date || "" }}</td>
-						<td>{{ entry.task.exp_end_date || "" }}</td>
+						<td class="planner-relations">
+							<div v-for="row in predecessorsFor(entry.task.name)" :key="row.name || row.parent + row.task">
+								<a class="planner-task-link" :href="taskUrl(row.task)" target="_blank" rel="noopener noreferrer">{{ taskLabel(row.task) }}</a>
+								<span class="text-ink-gray-5"> · {{ relationshipLabel(row) }}</span>
+							</div>
+							<span v-if="!predecessorsFor(entry.task.name).length" class="text-ink-gray-5">—</span>
+						</td>
+						<td class="planner-relations">
+							<div v-for="row in successorsFor(entry.task.name)" :key="row.name || row.parent + row.task">
+								<a class="planner-task-link" :href="taskUrl(row.parent)" target="_blank" rel="noopener noreferrer">{{ taskLabel(row.parent) }}</a>
+								<span class="text-ink-gray-5"> · {{ relationshipLabel(row) }}</span>
+							</div>
+							<span v-if="!successorsFor(entry.task.name).length" class="text-ink-gray-5">—</span>
+						</td>
+						<td>{{ displayDate(entry.task.exp_start_date) }}</td>
+						<td>{{ displayDate(entry.task.exp_end_date) }}</td>
 						<td class="w-32">
 							<FormControl type="number" :model-value="entry.task.duration ?? 0" min="0" step="1"
 								:disabled="busy || loading" :aria-label="'Duration for ' + entry.task.subject"
 								@change="(event) => saveDuration(entry.task, event.target.value)" />
 						</td>
 						<td>{{ entry.task.status || "" }}</td>
-						<td>
-							<span v-if="predecessorsFor(entry.task.name).length">
-								{{ predecessorsFor(entry.task.name).join(", ") }}
-							</span>
-						</td>
 						<td class="flex gap-1">
 							<Button label="↑" :aria-label="'Move ' + entry.task.subject + ' up'" :disabled="busy || loading || !canMove(entry.task, -1)" @click="moveRow(entry.task, -1)" />
 							<Button label="↓" :aria-label="'Move ' + entry.task.subject + ' down'" :disabled="busy || loading || !canMove(entry.task, 1)" @click="moveRow(entry.task, 1)" />
@@ -163,7 +193,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
-import { Badge, Button, Checkbox, FormControl, toast } from "frappe-ui";
+import { Badge, Button, Checkbox, FormControl } from "frappe-ui";
 import { deskCall } from "./deskApi";
 import ProjectLink from "./components/ProjectLink.vue";
 
@@ -174,6 +204,7 @@ const dependencies = ref([]);
 const loading = ref(false);
 const busy = ref(false);
 const selected = reactive({});
+const actionResult = ref(null);
 
 const dependencyType = ref("FS (Finish-to-Start)");
 const lagDays = ref(0);
@@ -220,6 +251,7 @@ const allSelected = computed(
 );
 
 watch(project, (value) => {
+	actionResult.value = null;
 	clearSelection();
 	if (value) loadPlan();
 	else {
@@ -245,8 +277,10 @@ async function loadPlan(preserveSelection = false) {
 			const known = new Set(tasks.value.map((task) => task.name));
 			for (const name of Object.keys(selected)) if (!known.has(name)) delete selected[name];
 		}
+		return true;
 	} catch (error) {
-		toast.error(error?.message || "Unable to load project plan");
+		notify(error?.message || "Unable to load project plan", true);
+		return false;
 	} finally {
 		loading.value = false;
 	}
@@ -268,52 +302,80 @@ function clearSelection() {
 	for (const key of Object.keys(selected)) delete selected[key];
 }
 
+function displayDate(value) {
+	if (!value) return "";
+	const date = String(value).slice(0, 10);
+	return window.frappe?.datetime?.str_to_user?.(date) || date;
+}
+
+function taskUrl(name) {
+	return window.frappe?.utils?.get_form_link?.("Task", name) || `/app/task/${encodeURIComponent(name)}`;
+}
+
+function taskLabel(name) {
+	const task = tasks.value.find((row) => row.name === name);
+	return task?.subject ? `${task.subject} (${name})` : name;
+}
+
+function relationshipLabel(row) {
+	const type = (row.custom_dependency_type || "FS").split(" ")[0];
+	const lag = Number(row.custom_lag_or_lead_days || 0);
+	return type + (lag ? ` ${lag > 0 ? "+" : ""}${lag}d` : "");
+}
+
 function predecessorsFor(taskName) {
-	return dependencies.value
-		.filter((row) => row.parent === taskName)
-		.map((row) => row.task);
+	return dependencies.value.filter((row) => row.parent === taskName);
 }
 
-async function linkSelected() {
-	if (selectedTasks.value.length < 2) return;
-	busy.value = true;
+function successorsFor(taskName) {
+	return dependencies.value.filter((row) => row.task === taskName);
+}
 
+function notify(message, error = false) {
+	const safeMessage = String(message).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+	window.frappe?.show_alert?.({ message: safeMessage, indicator: error ? "red" : "green" }, 7);
+}
+
+async function changeDependencies(action) {
+	if (selectedTasks.value.length < 2 || busy.value || loading.value) return;
+	busy.value = true;
+	actionResult.value = { message: action === "link" ? "Linking selected tasks…" : "Unlinking selected tasks…" };
+	const before = new Map(tasks.value.map((task) => [task.name, [task.exp_start_date, task.exp_end_date]]));
 	try {
-		const result = await deskCall("project_planner.api.link_tasks", {
-			project: project.value,
-			tasks: selectedTasks.value.map((task) => task.name),
-			dependency_type: dependencyType.value,
-			lag_days: Number(lagDays.value || 0),
-		});
-		toast.success(
-			`${result.created || 0} dependencies created` +
-				(result.skipped ? `; ${result.skipped} already existed` : "")
-		);
-		await loadPlan(true);
+		const args = { project: project.value, tasks: selectedTasks.value.map((task) => task.name) };
+		if (action === "link") {
+			args.dependency_type = dependencyType.value;
+			args.lag_days = Number(lagDays.value || 0);
+		}
+		const result = await deskCall(`project_planner.api.${action}_tasks`, args);
+		const message = action === "link"
+			? `Link: ${result.created || 0} created; ${result.skipped || 0} already existed (unchanged).`
+			: result.removed
+				? `Unlink: ${result.removed} existing dependencies removed.`
+				: "Unlink: no dependency existed between the selected tasks; nothing was removed.";
+		const refreshed = await loadPlan(true);
+		const changed = tasks.value.filter((task) => {
+			const dates = before.get(task.name);
+			return dates && (dates[0] !== task.exp_start_date || dates[1] !== task.exp_end_date);
+		}).length;
+		actionResult.value = {
+			message, details: result.details || [],
+			scheduleMessage: refreshed
+				? changed ? `${changed} task schedules changed. Review Start and Finish below.` : "No start/finish changes were detected in the loaded tasks."
+				: "Dependencies were saved, but the schedule could not be refreshed. Click Refresh to review dates.",
+		};
+		notify(message);
 	} catch (error) {
-		toast.error(error?.message || "Unable to link tasks");
+		const message = `${action === "link" ? "Link" : "Unlink"} failed: ${error?.message || "Unable to save dependencies"}`;
+		actionResult.value = { message, error: true };
+		notify(message, true);
 	} finally {
 		busy.value = false;
 	}
 }
 
-async function unlinkSelected() {
-	if (selectedTasks.value.length < 2) return;
-	busy.value = true;
-
-	try {
-		const result = await deskCall("project_planner.api.unlink_tasks", {
-			project: project.value,
-			tasks: selectedTasks.value.map((task) => task.name),
-		});
-		toast.success(`${result.removed || 0} dependencies removed`);
-		await loadPlan(true);
-	} catch (error) {
-		toast.error(error?.message || "Unable to unlink tasks");
-	} finally {
-		busy.value = false;
-	}
-}
+async function linkSelected() { await changeDependencies("link"); }
+async function unlinkSelected() { await changeDependencies("unlink"); }
 
 async function mutate(method, args) {
 	busy.value = true;
@@ -322,7 +384,7 @@ async function mutate(method, args) {
 		await loadPlan(true);
 		return result;
 	} catch (error) {
-		toast.error(error?.message || "Unable to save changes");
+		notify(error?.message || "Unable to save changes", true);
 		await loadPlan(true);
 	} finally {
 		busy.value = false;
