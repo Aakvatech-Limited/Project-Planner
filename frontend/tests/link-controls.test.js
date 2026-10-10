@@ -14,21 +14,23 @@ vi.mock("../src/components/ProjectLink.vue", () => ({
 let wrapper;
 afterEach(() => { wrapper?.unmount(); document.body.innerHTML = ""; });
 
-async function openPlanner() {
-	const rows = ["A", "B", "C"].map((name) => ({ name, subject: `Task ${name}`, duration: 1 }));
-	let dependencies = [];
-	const call = vi.fn(({ method, args, callback }) => {
+async function openPlanner(options = {}) {
+	const rows = ["A", "B", "C"].map((name) => ({ name, subject: `Task ${name}`, duration: 1, exp_start_date: "2026-10-10 08:30:00", exp_end_date: "2026-10-12 17:00:00" }));
+	let dependencies = options.dependencies || [];
+	const call = vi.fn(({ method, args, callback, error }) => {
+		if (options.fail && method.endsWith("link_tasks")) { error(new Error("Permission denied")); return; }
 		if (method.endsWith("get_project_plan")) {
 			callback({ message: { project: { name: "P" }, tasks: rows, dependencies } });
 		} else if (method.endsWith("unlink_tasks")) {
 			dependencies = [];
-			callback({ message: { removed: 1 } });
+			callback({ message: options.unlinkResult || { removed: 1 } });
 		} else {
 			dependencies = [{ parent: "C", task: "A" }];
-			callback({ message: { created: 1 } });
+			if (options.changeSchedule) rows[2].exp_start_date = "2026-10-13 08:30:00";
+			callback({ message: options.linkResult || { created: 1 } });
 		}
 	});
-	window.frappe = { call };
+	window.frappe = { call, show_alert: vi.fn(), utils: { get_form_link: (doctype, name) => `/desk/task/${encodeURIComponent(name)}` } };
 	wrapper = mount(App, { attachTo: document.body, global: { plugins: [FrappeUI] } });
 	await wrapper.get('[data-testid="project"]').trigger("click");
 	await flushPromises();
@@ -70,4 +72,56 @@ describe("Link and Unlink controls", () => {
 		expect(wrapper.get(".planner-link").isVisible()).toBe(true);
 		expect(wrapper.get('input[aria-label="Select Task C"]').element.checked).toBe(true);
 	});
+
+	it("shows persistent created and removed results plus actual schedule changes", async () => {
+		await openPlanner({ changeSchedule: true, linkResult: { created: 1, skipped: 0, details: [{ predecessor: "A", successor: "C", status: "created" }] } });
+		await wrapper.get('input[aria-label="Select Task A"]').setValue(true);
+		await wrapper.get('input[aria-label="Select Task C"]').setValue(true);
+		await wrapper.get(".planner-link").trigger("click");
+		await flushPromises();
+		expect(wrapper.get(".planner-action-result").text()).toContain("1 created; 0 already existed");
+		expect(wrapper.get(".planner-action-result").text()).toContain("Task A (A) → Task C (C): Linked");
+		expect(wrapper.get(".planner-action-result").text()).toContain("1 task schedules changed");
+		expect(window.frappe.show_alert).toHaveBeenCalled();
+		await wrapper.get(".planner-unlink").trigger("click");
+		await flushPromises();
+		expect(wrapper.get(".planner-action-result").text()).toContain("1 existing dependencies removed");
+	});
+
+	it("explains existing links and unlink with nothing to remove", async () => {
+		await openPlanner({ linkResult: { created: 0, skipped: 1 }, unlinkResult: { removed: 0 } });
+		await wrapper.get('input[aria-label="Select Task A"]').setValue(true);
+		await wrapper.get('input[aria-label="Select Task C"]').setValue(true);
+		await wrapper.get(".planner-link").trigger("click");
+		await flushPromises();
+		expect(wrapper.get(".planner-action-result").text()).toContain("0 created; 1 already existed (unchanged)");
+		await wrapper.get(".planner-unlink").trigger("click");
+		await flushPromises();
+		expect(wrapper.get(".planner-action-result").text()).toContain("no dependency existed");
+	});
+
+	it("shows errors instead of reporting a successful link", async () => {
+		await openPlanner({ fail: true });
+		await wrapper.get('input[aria-label="Select Task A"]').setValue(true);
+		await wrapper.get('input[aria-label="Select Task C"]').setValue(true);
+		await wrapper.get(".planner-link").trigger("click");
+		await flushPromises();
+		expect(wrapper.get(".planner-action-result").text()).toContain("Link failed: Permission denied");
+	});
+
+	it("renders clickable task and both dependency columns before dates, with no time", async () => {
+		await openPlanner({ dependencies: [{ parent: "C", task: "A", custom_dependency_type: "FS (Finish-to-Start)", custom_lag_or_lead_days: 2 }] });
+		const headers = wrapper.findAll("th").map((cell) => cell.text());
+		expect(headers.indexOf("Predecessors")).toBeLessThan(headers.indexOf("Start"));
+		expect(headers.indexOf("Successors")).toBeLessThan(headers.indexOf("Start"));
+		const rows = wrapper.findAll("tbody tr");
+		expect(rows[0].findAll("td")[4].text()).toContain("Task C (C)");
+		expect(rows[2].findAll("td")[3].text()).toContain("Task A (A)");
+		expect(rows[2].findAll("td")[3].text()).toContain("FS +2d");
+		expect(rows[0].findAll("td")[5].text()).toBe("2026-10-10");
+		expect(rows[0].findAll("td")[6].text()).toBe("2026-10-12");
+		expect(rows[0].get("a").attributes()).toMatchObject({ href: "/desk/task/A", target: "_blank", rel: "noopener noreferrer" });
+		expect(wrapper.get(".planner-scheduling-notice").text()).toContain("can change task start/finish dates and times");
+	});
+
 });
