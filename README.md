@@ -41,7 +41,7 @@ The exact scheduling side effects depend on the installed app revision and ERPNe
 
 ## Important dependency convention
 
-ERPNext treats `Task.depends_on` as predecessors. Selecting A, B, C in grid order and clicking **Link** stores A in B's `depends_on`, and B in C's `depends_on`. **Unlink** removes those same adjacent relationships. Selection stays active after saving.
+ERPNext treats `Task.depends_on` as predecessors. Selecting A, B, C in grid order and clicking **Link** stores A in B's `depends_on`, and B in C's `depends_on`. **Unlink** removes all existing relationships between the selected tasks, regardless of grid order or dependency direction. Dependencies involving unselected tasks are retained. Selection stays active after saving.
 
 Existing links created by older planner revisions may be reversed. Review them in the Task form; this upgrade does not automatically reverse existing data because native ERPNext links may already use the correct convention. Any site-specific scheduling scripts that treated dependencies as successors must also be revised separately.
 

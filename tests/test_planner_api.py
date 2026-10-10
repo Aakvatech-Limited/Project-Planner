@@ -59,6 +59,21 @@ class PlannerAPITests(unittest.TestCase):
 		self.assertEqual(self.api.unlink_tasks("P", ["A", "B"]), {"removed": 1})
 		self.assertEqual([row.task for row in self.docs["B"].depends_on], ["C"])
 
+	def test_unlink_removes_nonadjacent_and_reverse_edges(self):
+		self.docs["A"] = Task("A", ["C"])
+		self.docs["C"] = Task("C", ["B", "EXTERNAL"])
+		self.assertEqual(self.api.unlink_tasks("P", ["C", "A", "B"]), {"removed": 2})
+		self.assertEqual(self.docs["A"].depends_on, [])
+		self.assertEqual([row.task for row in self.docs["C"].depends_on], ["EXTERNAL"])
+
+	def test_unlink_checks_all_write_permissions_before_saving(self):
+		self.docs["B"] = Task("B", ["A"])
+		self.docs["C"] = Task("C", ["B"])
+		self.docs["C"].check_permission.side_effect = PermissionError
+		with self.assertRaises(PermissionError):
+			self.api.unlink_tasks("P", ["A", "B", "C"])
+		self.docs["B"].save.assert_not_called()
+
 	def test_duration_updates_finish_and_saves(self):
 		self.docs["A"].exp_start_date = "2026-10-10"
 		self.api.update_duration("P", "A", 3)
